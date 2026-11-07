@@ -78,65 +78,57 @@ plt.close(fig2)
 
 st.header("Survey Data Analysis")
 
-CSV_FILE = "data.csv"
-if not os.path.exists(CSV_FILE) or os.path.getsize(CSV_FILE) == 0:
-    st.warning("No survey data yet. Fill out the Survey page first.")
+if not os.path.exists("data.csv") or os.path.getsize("data.csv") == 0:
+    st.warning("No survey data yet. Submit some responses on the Survey page first.")
     st.stop()
 
-df = pd.read_csv(CSV_FILE)
+df = pd.read_csv("data.csv")
 
-# ---------- STATIC: bar chart (Altair, advanced) ----------
-st.subheader("Average Sleep by Class Year")
-avg_sleep = df.groupby("year", as_index=False)["sleep_hours"].mean()
-static_chart = (
-    alt.Chart(avg_sleep, title="Average Nightly Sleep by Class Year")
+# ---------- STATIC: bar chart (Altair) ----------
+st.subheader("Average Value by Category")
+avg_df = df.groupby("category", as_index=False)["value"].mean()
+bar = (
+    alt.Chart(avg_df, title="Average Value by Category")
     .mark_bar()
     .encode(
-        x=alt.X("year:N", title="Class Year",
-                sort=["Freshman", "Sophomore", "Junior", "Senior"]),
-        y=alt.Y("sleep_hours:Q", title="Average Sleep (hours)"),
-        tooltip=["year", "sleep_hours"],
+        x=alt.X("category:N", title="Category"),
+        y=alt.Y("value:Q", title="Average Value"),
+        tooltip=["category", "value"],
     )
 )
-st.altair_chart(static_chart, use_container_width=True)
+st.altair_chart(bar, use_container_width=True)
 
-# ---------- DYNAMIC: scatter plot with session state ----------
-st.subheader("Explore Relationships")
+# ---------- DYNAMIC: pie chart with session state ----------
+st.subheader("Share by Category (interactive)")
 
-if "x_var" not in st.session_state:
-    st.session_state.x_var = "sleep_hours"
-if "y_var" not in st.session_state:
-    st.session_state.y_var = "study_hours"
-if "years" not in st.session_state:
-    st.session_state.years = sorted(df["year"].unique())
+if "agg" not in st.session_state:
+    st.session_state.agg = "sum"
+if "selected_cats" not in st.session_state:
+    st.session_state.selected_cats = sorted(df["category"].unique())
 
-options = ["sleep_hours", "study_hours", "caffeine_cups"]
-
-st.session_state.x_var = st.selectbox(
-    "X-axis", options, index=options.index(st.session_state.x_var)
+st.session_state.agg = st.radio(
+    "Combine values using:", ["sum", "mean", "count"],
+    index=["sum", "mean", "count"].index(st.session_state.agg),
+    horizontal=True,
 )
-st.session_state.y_var = st.selectbox(
-    "Y-axis", options, index=options.index(st.session_state.y_var)
-)
-st.session_state.years = st.multiselect(
-    "Class years to include",
-    sorted(df["year"].unique()),
-    default=st.session_state.years,
+st.session_state.selected_cats = st.multiselect(
+    "Categories to include:", sorted(df["category"].unique()),
+    default=st.session_state.selected_cats,
 )
 
-filtered = df[df["year"].isin(st.session_state.years)]
-
+filtered = df[df["category"].isin(st.session_state.selected_cats)]
 if filtered.empty:
-    st.info("Select at least one class year.")
+    st.info("Select at least one category.")
 else:
-    dynamic_chart = (
-        alt.Chart(filtered, title=f"{st.session_state.y_var} vs. {st.session_state.x_var}")
-        .mark_circle(size=100)
+    pie_df = (filtered.groupby("category")["value"]
+              .agg(st.session_state.agg).reset_index(name="result"))
+    pie = (
+        alt.Chart(pie_df, title=f"{st.session_state.agg.title()} of Value by Category")
+        .mark_arc()
         .encode(
-            x=alt.X(f"{st.session_state.x_var}:Q", title=st.session_state.x_var.replace("_", " ").title()),
-            y=alt.Y(f"{st.session_state.y_var}:Q", title=st.session_state.y_var.replace("_", " ").title()),
-            color=alt.Color("year:N", title="Class Year"),
-            tooltip=["name", "year", "sleep_hours", "study_hours", "caffeine_cups"],
+            theta=alt.Theta("result:Q", title=st.session_state.agg.title()),
+            color=alt.Color("category:N", title="Category"),
+            tooltip=["category", "result"],
         )
     )
-    st.altair_chart(dynamic_chart, use_container_width=True)
+    st.altair_chart(pie, use_container_width=True)
