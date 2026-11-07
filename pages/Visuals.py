@@ -76,6 +76,9 @@ plt.close(fig2)
 # PART 2: GRAPHS FROM data.csv
 # --- YOUR CODE GOES HERE ---
 
+df = pd.read_csv("data.csv")
+df.colums = df.colums.str.strip().str.lower()
+
 st.header("Survey Data Analysis")
 
 if not os.path.exists("data.csv") or os.path.getsize("data.csv") == 0:
