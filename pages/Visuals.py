@@ -3,7 +3,7 @@
 import streamlit as st
 import json
 import pandas as pd
-import mathplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import os
 import altair as alt
 
