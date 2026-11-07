@@ -76,32 +76,32 @@ plt.close(fig2)
 # PART 2: GRAPHS FROM data.csv
 # --- YOUR CODE GOES HERE ---
 
-df = pd.read_csv("data.csv", encoding="utf-8-sig")
-df.columns = df.columns.str.strip().str.lower()
-
-# ...only then the bar chart
-avg_df = df.groupby("category", as_index=False)["value"].mean()
-
-st.write(list(df.columns))
-
 st.header("Survey Data Analysis")
 
 if not os.path.exists("data.csv") or os.path.getsize("data.csv") == 0:
     st.warning("No survey data yet. Submit some responses on the Survey page first.")
     st.stop()
 
-df = pd.read_csv("data.csv")
+df = pd.read_csv("data.csv", encoding="utf-8-sig")
+df.columns = df.columns.str.strip()   # remove stray spaces only; keeps capitalization
+
+if not {"Category", "Value"}.issubset(df.columns):
+    st.error(f"data.csv must have 'Category' and 'Value' columns, but found: {list(df.columns)}")
+    st.stop()
+
+df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
+df = df.dropna(subset=["Category", "Value"])
 
 # ---------- STATIC: bar chart (Altair) ----------
 st.subheader("Average Value by Category")
-avg_df = df.groupby("category", as_index=False)["value"].mean()
+avg_df = df.groupby("Category", as_index=False)["Value"].mean()
 bar = (
     alt.Chart(avg_df, title="Average Value by Category")
     .mark_bar()
     .encode(
-        x=alt.X("category:N", title="Category"),
-        y=alt.Y("value:Q", title="Average Value"),
-        tooltip=["category", "value"],
+        x=alt.X("Category:N", title="Category"),
+        y=alt.Y("Value:Q", title="Average Value"),
+        tooltip=["Category", "Value"],
     )
 )
 st.altair_chart(bar, use_container_width=True)
@@ -112,7 +112,7 @@ st.subheader("Share by Category (interactive)")
 if "agg" not in st.session_state:
     st.session_state.agg = "sum"
 if "selected_cats" not in st.session_state:
-    st.session_state.selected_cats = sorted(df["category"].unique())
+    st.session_state.selected_cats = sorted(df["Category"].unique())
 
 st.session_state.agg = st.radio(
     "Combine values using:", ["sum", "mean", "count"],
@@ -120,23 +120,23 @@ st.session_state.agg = st.radio(
     horizontal=True,
 )
 st.session_state.selected_cats = st.multiselect(
-    "Categories to include:", sorted(df["category"].unique()),
+    "Categories to include:", sorted(df["Category"].unique()),
     default=st.session_state.selected_cats,
 )
 
-filtered = df[df["category"].isin(st.session_state.selected_cats)]
+filtered = df[df["Category"].isin(st.session_state.selected_cats)]
 if filtered.empty:
     st.info("Select at least one category.")
 else:
-    pie_df = (filtered.groupby("category")["value"]
-              .agg(st.session_state.agg).reset_index(name="result"))
+    pie_df = (filtered.groupby("Category")["Value"]
+              .agg(st.session_state.agg).reset_index(name="Result"))
     pie = (
         alt.Chart(pie_df, title=f"{st.session_state.agg.title()} of Value by Category")
         .mark_arc()
         .encode(
-            theta=alt.Theta("result:Q", title=st.session_state.agg.title()),
-            color=alt.Color("category:N", title="Category"),
-            tooltip=["category", "result"],
+            theta=alt.Theta("Result:Q", title=st.session_state.agg.title()),
+            color=alt.Color("Category:N", title="Category"),
+            tooltip=["Category", "Result"],
         )
     )
     st.altair_chart(pie, use_container_width=True)
