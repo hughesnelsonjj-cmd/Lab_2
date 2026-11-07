@@ -77,7 +77,7 @@ plt.close(fig2)
 # --- YOUR CODE GOES HERE ---
 
 df = pd.read_csv("data.csv")
-df.colums = df.colums.str.strip().str.lower()
+df.colums = df.columns.str.strip().str.lower()
 
 st.header("Survey Data Analysis")
 
